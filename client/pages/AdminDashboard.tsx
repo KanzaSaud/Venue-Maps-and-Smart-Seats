@@ -5,8 +5,93 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Plus, BarChart3, Calendar, MapPin } from "lucide-react";
+import { useState } from "react";
+
 
 export default function AdminDashboard() {
+ const [showUpload, setShowUpload] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (e.target.files && e.target.files[0]) {
+    setSelectedFile(e.target.files[0]);
+  }
+};
+
+// const handleUpload = async () => {
+//   if (!selectedFile) return;
+//   setUploading(true);
+
+//   const formData = new FormData();
+//   formData.append("image", selectedFile);
+
+//   try {
+//     const res = await fetch("/api/venues/1/map-image", {
+//       method: "POST",
+//       body: formData,
+//     });
+//     const data = await res.json();
+//     console.log("Upload success:", data);
+//     alert("Upload success!");
+//     setSelectedFile(null);
+//     setShowUpload(false);
+//   } catch (err) {
+//     console.error(err);
+//     alert("Upload failed");
+//   } finally {
+//     setUploading(false);
+//   }
+// };
+// const handleUpload = async (file: File) => {
+//   const formData = new FormData();
+//   formData.append("image", file);
+
+//   const res = await fetch(`/api/venues/1/process-image`, {
+//     method: "POST",
+//     body: formData,
+//   });
+
+//   const data = await res.json();
+
+//   if (data.status === "ok") {
+//     alert(`Seats generated successfully: ${data.seats.length} seats`);
+//     // You can now proceed to save seats in DB or show them in SeatCanvas
+//   } else {
+//     alert(`Failed: ${data.message}`);
+//   }
+// };
+const handleUpload = async () => {
+  if (!selectedFile) return;
+
+  setUploading(true);
+
+  const formData = new FormData();
+  formData.append("image", selectedFile);
+
+  try {
+    const res = await fetch(`/api/venues/1/process-image`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (data.status === "ok") {
+      alert(`Seats generated successfully: ${data.seats.length}`);
+    } else {
+      alert(`Failed: ${data.message}`);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Upload failed");
+  } finally {
+    setUploading(false);
+  }
+};
+
+
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
@@ -83,19 +168,19 @@ export default function AdminDashboard() {
                 <div className="space-y-3">
                   {[
                     {
-                      name: "Coldplay Concert",
+                      name: "Carnival of Lights",
                       date: "Dec 15, 2024",
                       tickets: "8,450/10,000",
                       status: "Active",
                     },
                     {
-                      name: "IPL Match",
+                      name: "Monkey Business",
                       date: "Dec 18, 2024",
                       tickets: "25,000/33,108",
                       status: "Active",
                     },
                     {
-                      name: "Comedy Night",
+                      name: "Adrenaline",
                       date: "Dec 20, 2024",
                       tickets: "450/500",
                       status: "Almost Full",
@@ -136,17 +221,40 @@ export default function AdminDashboard() {
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold">Venue Management</h2>
-                  <Button className="btn-primary rounded-lg flex items-center gap-2">
+                  <Button className="btn-primary rounded-lg flex items-center gap-2"
+                  onClick={() => setShowUpload(!showUpload)}>
                     <Plus className="w-4 h-4" />
                     Add Venue
                   </Button>
+                  {showUpload && (
+  <div className="mt-4 p-4 border-2 border-dashed border-border rounded-lg flex flex-col gap-2">
+    <input type="file" accept="image/*" onChange={handleFileChange} />
+    {selectedFile && <p className="text-sm text-muted-foreground">{selectedFile.name}</p>}
+    <div className="flex gap-2">
+      <button
+        onClick={handleUpload}
+        disabled={uploading || !selectedFile}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        {uploading ? "Uploading..." : "Upload Venue Map"}
+      </button>
+      <button
+        onClick={() => { setShowUpload(false); setSelectedFile(null); }}
+        className="px-4 py-2 bg-gray-200 rounded"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { name: "DY Patil Stadium", capacity: "65,000", events: "3" },
-                    { name: "Wankhede Stadium", capacity: "33,108", events: "2" },
-                    { name: "Jio World Convention Centre", capacity: "16,000", events: "5" },
+                    { name: "Arts Council of Pakistan", capacity: "65,000", events: "3" },
+                    { name: "The Palm Marquee", capacity: "33,108", events: "2" },
+                    { name: "Frere Hall", capacity: "16,000", events: "5" },
                   ].map((venue, idx) => (
                     <Card
                       key={idx}

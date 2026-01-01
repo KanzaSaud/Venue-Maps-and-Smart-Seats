@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import venueRoutes from "./routes/venue";
+import venueUploadRoutes from "./routes/venueUpload";
+
 
 export function createServer() {
   const app = express();
@@ -13,7 +15,8 @@ export function createServer() {
   app.use(express.urlencoded({ extended: true }));
 
 
-  app.use("/api", venueRoutes);
+  app.use("/api/venues", venueUploadRoutes); //e.g., POST /api/venues/:id/map-image
+  app.use("/api/venues", venueRoutes);
 
 
   // Example API routes

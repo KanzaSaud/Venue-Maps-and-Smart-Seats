@@ -22,11 +22,43 @@ export default function SeatCanvas() {
         height: data.height,
       });
     })
-    .catch((err) => {
-      console.error("Failed to load seat map", err);
-    });
-}, []);
+      .catch((err) => {
+        console.error("Failed to load seat map", err);
+      });
+  }, []);
 
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append("image", selectedFile);
+
+    try {
+      const res = await fetch("/api/venues/1/map-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      console.log("Upload success:", data);
+      alert("Upload success!");
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -61,6 +93,23 @@ export default function SeatCanvas() {
       addSeat(selectedSeat);
     }
   };
+
+  const handleProcessImage = async (file: File) => {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const res = await fetch("/api/venues/1/process-image", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await res.json();
+  console.log("Seats from Python API:", data.seats);
+
+  setSeats(data.seats);
+  setVenueSize({ width: data.width, height: data.height });
+};
+
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 min-h-[600px] w-full">
@@ -138,6 +187,17 @@ export default function SeatCanvas() {
             const color = seat.available
               ? getCategoryColor(seat.category)
               : "#d1d5db";
+
+            <div className="flex flex-col gap-2">
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+              <button
+                onClick={handleUpload}
+                disabled={uploading || !selectedFile}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                {uploading ? "Uploading..." : "Upload Venue Map"}
+              </button>
+            </div>
 
             return (
               <Tooltip key={seat.id}>
