@@ -105,33 +105,76 @@ def finalize_seats(seats):
 
     return final_seats
 
+
+import tempfile
+import os
+
 @app.post("/process-venue-image/{venue_id}")
-async def process_venue_image(venue_id: str, image: UploadFile = File(...)):
+async def process_venue_image(
+    venue_id: str,
+    image: UploadFile = File(...)
+):
     try:
-        # Optionally save uploaded image if needed
-        # content = await image.read()
-        # with open(f"temp_{venue_id}.jpg", "wb") as f:
-        #     f.write(content)
+        # Create temp file safely (cross-platform)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+            tmp.write(await image.read())
+            temp_path = tmp.name
 
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        # Load + process image
+        img = load_image(temp_path)
+        h, w = img.shape[:2]
 
-        # Fetch seats for the venue
-        cursor.execute("SELECT * FROM seats WHERE venue_id = %s", (venue_id,))
-        seats = cursor.fetchall()
+        pre = preprocess(img)
+        circles = detect_seats(pre)
 
-        conn.close()
+        raw_seats = normalize_seats(circles, w, h)
+        rowed = assign_rows(raw_seats)
+        final_seats = finalize_seats(rowed)
+
+        # Cleanup
+        os.remove(temp_path)
 
         return {
+            "status": "ok",
             "venue_id": venue_id,
-            "seats": seats,
-            "width": 1200,  # adjust as per your design
-            "height": 800
+            "width": 1200,
+            "height": 800,
+            "seats": final_seats,
         }
 
     except Exception as e:
-        print("Error fetching seats:", e)
-        return {"error": "Internal server error"}
+        print("Error processing image:", e)
+        return {"status": "error", "message": str(e)}
+
+
+# @app.post("/process-venue-image/{venue_id}")
+# async def process_venue_image(venue_id: str, image: UploadFile = File(...)):
+#     try:
+#         # Optionally save uploaded image if needed
+#         # content = await image.read()
+#         # with open(f"temp_{venue_id}.jpg", "wb") as f:
+#         #     f.write(content)
+
+#         conn = get_db_connection()
+#         cursor = conn.cursor(dictionary=True)
+
+#         # Fetch seats for the venue
+#         cursor.execute("SELECT * FROM seats WHERE venue_id = %s", (venue_id,))
+#         seats = cursor.fetchall()
+
+#         conn.close()
+
+#         return {
+#             "status": "ok",
+#             "venue_id": venue_id,
+#             "seats": seats,
+#             "width": 1200,  # adjust as per your design
+#             "height": 800
+#         }
+
+#     except Exception as e:
+#         print("Error fetching seats:", e)
+#         return {"error": "Internal server error"}
     
     
 # @app.post("/process-venue-image/{venue_id}")
