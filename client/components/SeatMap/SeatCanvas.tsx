@@ -1,13 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSeatSelection, SelectedSeat } from "@/store/SeatSelectionContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { mockSeats } from "@/data/mockData";
+// import { mockSeats } from "@/data/mockData";
+import type { Seat } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 
 export default function SeatCanvas() {
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [venueSize, setVenueSize] = useState({width: 600, height: 400,});
   const { selectedSeats, addSeat, removeSeat, isSeatSelected } = useSeatSelection();
   const [hoveredSeat, setHoveredSeat] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+  fetch("/api/venues/1/seats")
+    .then((res) => res.json())
+    .then((data) => {
+      setSeats(data.seats);
+      setVenueSize({
+        width: data.width,
+        height: data.height,
+      });
+    })
+    .catch((err) => {
+      console.error("Failed to load seat map", err);
+    });
+}, []);
+
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -47,8 +66,10 @@ export default function SeatCanvas() {
     <div className="flex flex-col items-center justify-center gap-6 min-h-[600px] w-full">
       {/* SVG Venue Map */}
       <div className="overflow-auto bg-card rounded-xl border border-border p-4 w-full">
+        {/* <svg
+          viewBox="0 0 600 400" */}
         <svg
-          viewBox="0 0 600 400"
+          viewBox={`0 0 ${venueSize.width} ${venueSize.height}`}
           className="w-full h-auto"
           style={{
             transform: `scale(${zoom})`,
@@ -110,7 +131,8 @@ export default function SeatCanvas() {
           </text>
 
           {/* Seats */}
-          {mockSeats.map((seat) => {
+          {/* {mockSeats.map((seat) => { */}
+          {seats.map((seat) => {
             const isSelected = isSeatSelected(seat.id);
             const isHovered = hoveredSeat === seat.id;
             const color = seat.available
