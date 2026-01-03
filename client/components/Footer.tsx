@@ -12,9 +12,9 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-white text-sm font-bold">VT</span>
+                <span className="text-white text-sm font-bold">TW</span>
               </div>
-              <span className="font-bold text-lg">VenueTicket</span>
+              <span className="font-bold text-lg">TicketWala</span>
             </div>
             <p className="text-sm opacity-75">
               Experience the future of ticket booking with smart seat selection.
@@ -92,7 +92,7 @@ export default function Footer() {
         <div className="border-t border-secondary-foreground/20 pt-8 mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm opacity-75">
-              &copy; {currentYear} VenueTicket. All rights reserved.
+              &copy; {currentYear} TicketWala. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <a 

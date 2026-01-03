@@ -37,9 +37,9 @@ export default function Header() {
           className="flex items-center gap-2 text-xl font-bold text-primary hover:opacity-80 transition-opacity"
         >
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <span className="text-white text-sm font-bold">VT</span>
+            <span className="text-white text-sm font-bold">TW</span>
           </div>
-          <span className="hidden sm:inline">VenueTicket</span>
+          <span className="hidden sm:inline">TicketWala</span>
         </Link>
 
         {/* Desktop Navigation */}

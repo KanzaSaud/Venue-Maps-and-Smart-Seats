@@ -37,7 +37,7 @@ export default function Index() {
           <div className="space-y-6 mb-12">
             <div className="inline-flex items-center gap-2 bg-accent/10 text-accent px-4 py-2 rounded-full">
               <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-semibold">Welcome to VenueTicket</span>
+              <span className="text-sm font-semibold">Welcome to TicketWala</span>
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
