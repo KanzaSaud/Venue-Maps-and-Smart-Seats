@@ -4,8 +4,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 // import { mockSeats } from "@/data/mockData";
 import type { Seat } from "@/data/mockData";
 import { cn } from "@/lib/utils";
+interface SeatCanvasProps {
+  venueId: number; // or number if your ID is numeric
+}
 
-export default function SeatCanvas() {
+export default function SeatCanvas({ venueId }: SeatCanvasProps) {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [venueSize, setVenueSize] = useState({width: 600, height: 400,});
   const { selectedSeats, addSeat, removeSeat, isSeatSelected } = useSeatSelection();
@@ -13,7 +16,8 @@ export default function SeatCanvas() {
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
-  fetch("/api/venues/1/seats")
+  // fetch("/api/venues/1/seats")
+  fetch(`http://localhost:8000/venues/${venueId}/seats`)
     .then((res) => res.json())
     .then((data) => {
       setSeats(data.seats);
@@ -21,11 +25,25 @@ export default function SeatCanvas() {
         width: data.width,
         height: data.height,
       });
+      const normalizedSeats = data.seats.map((s: any) => ({
+        id: s.id,
+        x: s.x,
+        y: s.y,
+        row: s.seat_row,
+        number: s.seat_number,
+        category: s.category,
+        price: s.price,
+        section: s.section,
+        available: s.available,
+      }));
+
+      setSeats(normalizedSeats);
+
     })
       .catch((err) => {
         console.error("Failed to load seat map", err);
       });
-  }, []);
+  }, [venueId]);
 
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -113,8 +131,18 @@ export default function SeatCanvas() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 min-h-[600px] w-full">
+      <div className="flex flex-col gap-2">
+              <input type="file" accept="image/*" onChange={handleFileChange} />
+              <button
+                onClick={handleUpload}
+                disabled={uploading || !selectedFile}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                {uploading ? "Uploading..." : "Upload Venue Map"}
+              </button>
+            </div>
       {/* SVG Venue Map */}
-      <div className="overflow-auto bg-card rounded-xl border border-border p-4 w-full">
+      <div className="overflow-auto bg-card rounded-xl border border-border p-4 w-full">  
         {/* <svg
           viewBox="0 0 600 400" */}
         <svg
@@ -188,17 +216,7 @@ export default function SeatCanvas() {
               ? getCategoryColor(seat.category)
               : "#d1d5db";
 
-            <div className="flex flex-col gap-2">
-              <input type="file" accept="image/*" onChange={handleFileChange} />
-              <button
-                onClick={handleUpload}
-                disabled={uploading || !selectedFile}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
-              >
-                {uploading ? "Uploading..." : "Upload Venue Map"}
-              </button>
-            </div>
-
+            
             return (
               <Tooltip key={seat.id}>
                 <TooltipTrigger asChild>

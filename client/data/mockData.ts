@@ -9,6 +9,7 @@ export interface Event {
   price: number;
   rating?: number;
   description?: string;
+  venueId: number;
 }
 
 export interface Venue {
@@ -31,6 +32,7 @@ export const mockFeaturedEvents: Event[] = [
     category: "Music",
     price: 2500,
     rating: 4.8,
+    venueId: 1,
     description: "Experience Carnival of Lights with exotic colors as the night sky lights up.",
   },
   {
@@ -43,6 +45,7 @@ export const mockFeaturedEvents: Event[] = [
     category: "Comedy",
     price: 2500,
     rating: 4.7,
+    venueId: 2,
     description: "A hilarious comedy play by Yasir Hussain. Satire and laughs at Karachi’s Arts Council.",
   },
   {
@@ -55,6 +58,7 @@ export const mockFeaturedEvents: Event[] = [
     category: "Theatre",
     price: 2000,
     rating: undefined,
+    venueId: 3,
     description: "A bold new play by 7Spices Theatre (Canada & Syria) exploring displacement, memory, and identity.",
   },
   {
@@ -67,6 +71,7 @@ export const mockFeaturedEvents: Event[] = [
     category: "Other Events",
     price: 1200,
     rating: 4.5,
+    venueId: 4,
     description: "OFFSCRIPT is calling you to unplug from the simulated reality and dive into an epic night inspired by The Matrix.",
   },
   {
@@ -79,6 +84,7 @@ export const mockFeaturedEvents: Event[] = [
     category: "Other Events",
     price: 3000,
     rating: undefined,
+    venueId: 5,
     description: "Enjoy a rooftop silent-movie screening under the stars at Cortado, complete with headphones, a snack, and coffee. A perfect evening out!",
   },
   {
@@ -91,6 +97,7 @@ export const mockFeaturedEvents: Event[] = [
     category: "Theatre",
     price: 1500,
     rating: 4.4,
+    venueId: 6,
     description: "A humorous and chaotic kitchen-themed play where everything is set except the chef himself. Expect laughter, surprises, and theatrical fun!",
   },
 ];

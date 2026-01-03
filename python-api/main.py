@@ -3,47 +3,68 @@ from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 from db import get_db_connection
+from seat_detector import OpenCVSeatDetector
+
 
 app = FastAPI()
+
+def save_seats_to_db(venue_id: int, seats: list):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # OPTIONAL: clear existing seats for this venue
+    cursor.execute(
+        "DELETE FROM seats WHERE venue_id = %s",
+        (venue_id,)
+    )
+
+    insert_query = """
+        INSERT INTO seats (
+            venue_id,
+            seat_code,
+            seat_row,
+            seat_number,
+            section,
+            category,
+            price,
+            x,
+            y,
+            available
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+
+    for seat in seats:
+        cursor.execute(
+            insert_query,
+            (
+                venue_id,
+                None,            # seat_code
+                None,            # seat_row
+                None,            # seat_number
+                "default",       # section
+                "standard",      # category
+                3000,             # price
+                seat["x"],
+                seat["y"],
+                True
+            )
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 # Allow requests from your frontend (Vite)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # adjust port if different
+    allow_origins=["http://localhost:8080", "http://localhost:5173"],  # adjust port if different
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-def load_image(image_path: str):
-    img = cv2.imread(image_path)
-    if img is None:
-        raise ValueError("Image not found or invalid")
-    return img
-
-def preprocess(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
-    return blur
-
-def detect_seats(preprocessed_img):
-    circles = cv2.HoughCircles(
-        preprocessed_img,
-        cv2.HOUGH_GRADIENT,
-        dp=1.2,
-        minDist=20,
-        param1=50,
-        param2=30,
-        minRadius=5,
-        maxRadius=15
-    )
-
-    if circles is None:
-        return []
-
-    circles = np.uint16(np.around(circles[0]))
-    return circles
-
+# 
 def normalize_seats(circles, img_width, img_height, svg_width=1200, svg_height=800):
     seats = []
 
@@ -62,9 +83,11 @@ def normalize_seats(circles, img_width, img_height, svg_width=1200, svg_height=8
 from sklearn.cluster import KMeans
 
 def assign_rows(seats):
+    if len(seats) == 0:
+        return seats  # ← critical guard
+
     y_coords = np.array([[s["y"]] for s in seats])
 
-    # Estimate number of rows (heuristic)
     k = max(1, len(seats) // 10)
 
     kmeans = KMeans(n_clusters=k, n_init=10)
@@ -74,6 +97,21 @@ def assign_rows(seats):
         seat["row_index"] = label
 
     return seats
+
+
+# def assign_rows(seats):
+#     y_coords = np.array([[s["y"]] for s in seats])
+
+#     # Estimate number of rows (heuristic)
+#     k = max(1, len(seats) // 10)
+
+#     kmeans = KMeans(n_clusters=k, n_init=10)
+#     labels = kmeans.fit_predict(y_coords)
+
+#     for seat, label in zip(seats, labels):
+#         seat["row_index"] = label
+
+#     return seats
 
 def finalize_seats(seats):
     # Sort rows top → bottom
@@ -105,46 +143,177 @@ def finalize_seats(seats):
 
     return final_seats
 
-
+from fastapi import UploadFile, File
 import tempfile
 import os
 
 @app.post("/process-venue-image/{venue_id}")
 async def process_venue_image(
-    venue_id: str,
+    venue_id: int,
     image: UploadFile = File(...)
 ):
     try:
-        # Create temp file safely (cross-platform)
+        # Save uploaded image temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(await image.read())
             temp_path = tmp.name
 
-        # Load + process image
-        img = load_image(temp_path)
-        h, w = img.shape[:2]
+        # Detect seats
+        detector = OpenCVSeatDetector()
+        detector.load_image(temp_path)
+        seats = detector.detect_seats(min_area=50, max_area=5000)
 
-        pre = preprocess(img)
-        circles = detect_seats(pre)
-
-        raw_seats = normalize_seats(circles, w, h)
-        rowed = assign_rows(raw_seats)
-        final_seats = finalize_seats(rowed)
-
-        # Cleanup
         os.remove(temp_path)
+
+        # Save to DB
+        save_seats_to_db(venue_id, seats)
 
         return {
             "status": "ok",
             "venue_id": venue_id,
-            "width": 1200,
-            "height": 800,
-            "seats": final_seats,
+            "total_seats": len(seats),
+            "seats": seats
         }
 
     except Exception as e:
         print("Error processing image:", e)
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+from fastapi import HTTPException
+
+@app.get("/venues/{venue_id}/seats")
+def get_venue_seats(venue_id: int):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                seat_code,
+                seat_row,
+                seat_number,
+                section,
+                category,
+                price,
+                x,
+                y,
+                available
+            FROM seats
+            WHERE venue_id = %s
+            ORDER BY y, x
+            """,
+            (venue_id,)
+        )
+
+        seats = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "venue_id": venue_id,
+            "width": 1200,
+            "height": 800,
+            "seats": seats
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# import tempfile
+# import os
+
+# @app.post("/process-venue-image/{venue_id}")
+# async def process_venue_image(
+#     venue_id: str,
+#     image: UploadFile = File(...)
+# ):
+#     try:
+#         # Save uploaded image temporarily
+#         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+#             tmp.write(await image.read())
+#             temp_path = tmp.name
+
+#         detector = OpenCVSeatDetector()
+#         detector.load_image(temp_path)
+
+#         seats = detector.detect_seats(
+#             min_area=50,
+#             max_area=5000
+#         )
+
+#         os.remove(temp_path)
+
+#         return {
+#             "status": "ok",
+#             "venue_id": venue_id,
+#             "width": 1200,
+#             "height": 800,
+#             "seats": seats
+#         }
+
+#     except Exception as e:
+#         print("Error processing image:", e)
+#         return {
+#             "status": "error",
+#             "message": str(e)
+#         }
+
+
+# import tempfile
+# import os
+
+# @app.post("/process-venue-image/{venue_id}")
+# async def process_venue_image(
+#     venue_id: str,
+#     image: UploadFile = File(...)
+# ):
+#     try:
+#         # Create temp file safely (cross-platform)
+#         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+#             tmp.write(await image.read())
+#             temp_path = tmp.name
+
+#         # Load + process image
+#         img = load_image(temp_path)
+#         h, w = img.shape[:2]
+
+#         pre = preprocess(img)
+#         circles = detect_seats(pre)
+
+#         raw_seats = normalize_seats(circles, w, h)
+#         if not raw_seats:
+#             return {
+#             "status": "ok",
+#             "venue_id": venue_id,
+#             "width": 1200,
+#             "height": 800,
+#             "seats": []
+#             }
+
+#         rowed = assign_rows(raw_seats)
+#         final_seats = finalize_seats(rowed)
+
+
+#         # Cleanup
+#         os.remove(temp_path)
+
+#         return {
+#             "status": "ok",
+#             "venue_id": venue_id,
+#             "width": 1200,
+#             "height": 800,
+#             "seats": final_seats,
+#         }
+
+#     except Exception as e:
+#         print("Error processing image:", e)
+#         return {"status": "error", "message": str(e)}
 
 
 # @app.post("/process-venue-image/{venue_id}")
@@ -215,3 +384,33 @@ async def process_venue_image(
 #         "width": 600,
 #         "height": 400
 #     }
+
+
+# def load_image(image_path: str):
+#     img = cv2.imread(image_path)
+#     if img is None:
+#         raise ValueError("Image not found or invalid")
+#     return img
+
+# def preprocess(img):
+#     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#     blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
+#     return blur
+
+# def detect_seats(preprocessed_img):
+#     circles = cv2.HoughCircles(
+#         preprocessed_img,
+#         cv2.HOUGH_GRADIENT,
+#         dp=1.2,
+#         minDist=20,
+#         param1=50,
+#         param2=30,
+#         minRadius=5,
+#         maxRadius=15
+#     )
+
+#     if circles is None:
+#         return []
+
+#     circles = np.uint16(np.around(circles[0]))
+#     return circles

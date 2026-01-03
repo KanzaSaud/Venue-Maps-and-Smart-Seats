@@ -89,7 +89,7 @@ export default function SeatMap() {
                   <h2 className="text-2xl font-bold text-foreground mb-6">
                     Select Your Seats
                   </h2>
-                  <SeatCanvas />
+                  <SeatCanvas venueId={event.venueId} />
                 </Card>
               </div>
 

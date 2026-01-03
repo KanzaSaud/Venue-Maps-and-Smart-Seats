@@ -70,7 +70,7 @@ const handleUpload = async () => {
   formData.append("image", selectedFile);
 
   try {
-    const res = await fetch(`/api/venues/1/process-image`, {
+    const res = await fetch("http://127.0.0.1:8000/process-venue-image/1", {
       method: "POST",
       body: formData,
     });
